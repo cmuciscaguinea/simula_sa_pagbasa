@@ -14,6 +14,7 @@ class SimulaSaPagbasaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+       debugShowCheckedModeBanner: false, // Hides the debug banner
       home: SplashScreen(), // Set the SplashScreen as the initial screen
       theme: ThemeData(
         primaryColor: Colors.green,
@@ -111,17 +112,17 @@ class HomePage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  minimumSize: const Size(200, 50),
-                ),
-                onPressed: () => clearCache(context),
-                child: Text(
-                  'CLEAR CACHE',
-                  style: GoogleFonts.lexendDeca(fontSize: 18, color: Colors.white),
-                ),
-              ),
+              // ElevatedButton(
+              //   style: ElevatedButton.styleFrom(
+              //     backgroundColor: Colors.red,
+              //     minimumSize: const Size(200, 50),
+              //   ),
+              //   onPressed: () => clearCache(context),
+              //   child: Text(
+              //     'CLEAR CACHE',
+              //     style: GoogleFonts.lexendDeca(fontSize: 18, color: Colors.white),
+              //   ),
+              // ),
             ],
           ),
         ),

@@ -20,8 +20,8 @@ final String collaborationDetails =
 
   final String counterparts =
       'Marungko Approach Simula sa Pagbasa builds on the legacy of other groundbreaking projects under the CISC KIDS initiative:\n\n'
-      '1. CISC KIDS: Reading Comprehension - Focuses on enhancing comprehension skills through technology\n'
-      '2. CISC KIDS: Beginning Reading English Fuller Approach - Integrates phonics, vocabulary building, and alphabet mastery';
+      '1. CISC KIDS: Reading Comprehension - Focuses on enhancing comprehension skills through technology.\n'
+      '2. CISC KIDS: Beginning Reading English Fuller Approach - Integrates phonics, vocabulary building, and alphabet mastery.';
 
   @override
   Widget build(BuildContext context) {
