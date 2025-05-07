@@ -1,0 +1,356 @@
+name: flutter_application_4
+description: "A new Flutter project."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+# Dependencies specify other packages that your package needs in order to work.
+dependencies:
+  flutter:
+    sdk: flutter
+  google_fonts: ^5.0.0
+  cupertino_icons: ^1.0.8
+  audioplayers: ^6.1.0  # Keeping the latest version
+  shared_preferences: ^2.0.13
+  auto_size_text: ^3.0.0
+
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/
+    - assets/audio/sample_sound.mp3 # Correctly indented
+    - assets/audio/aralin2.mp3
+    - assets/audio/aralin3.mp3
+    - assets/audio/maa.mp3
+    - assets/audio/sa.mp3
+    - assets/audio/aralin4.mp3
+    - assets/audio/mangaa.mp3
+    - assets/audio/Laro 1 - Mangga.mp3
+    - assets/audio/Aralin 3 - masa.mp3
+    - assets\audio\Aralin 3 - sama_sama.mp3
+    - assets/audio/Aralin 1 - Mm.mp3 #1
+    - assets/audio/Aralin 2 - Ss.mp3 #2
+    - assets/audio/Aralin 3 - Aa.mp3 #3
+    - assets/audio/Aralin 3 - ma.mp3
+    - assets/audio/Aralin 3 - sa.mp3
+    - assets/audio/Aralin 3 - ama.mp3
+    - assets/audio/Aralin 3 - asa.mp3
+    - assets/audio/Aralin 3 - sama.mp3
+    - assets/audio/Aralin 3 - masa.mp3
+    - assets/audio/Aralin 3 - sasama.mp3
+    - assets/audio/Aralin 3 - sa_ama.mp3
+    - assets/audio/Aralin 3 - masama.mp3
+    - assets/audio/Aralin 3 - sama_sama.mp3 # Last C:\APP.T_T\flutter_application_4\assets\audio\Aralin 4 - ang.mp3
+    - assets/audio/Aralin 4 - ang.mp3
+    - assets/audio/Aralin 4 - ang_ama.mp3
+    - assets/audio/Aralin 4 - ang_mama.mp3
+    - assets/audio/Aralin 4 - ang_masa.mp3
+    - assets/audio/Aralin 4 - ang_asa.mp3
+    - assets/audio/Aralin 4 - ang_sasama.mp3
+    - assets/audio/Aralin 4 Pagbasa.mp3
+    - assets/audio/Ama.mp3
+    - assets/audio/Amaa.mp3
+    - assets/audio/Aralin 5 - Ii.mp3 # Aralin 5  Aralin 5 - Pagbasa.mp3
+    - assets/audio/Aralin 5 - mi.mp3
+    - assets/audio/Aralin 5 - si.mp3
+    - assets/audio/Aralin 5 - isa.mp3
+    - assets/audio/Aralin 5 - ami.mp3
+    - assets/audio/Aralin 5 - misa.mp3
+    - assets/audio/Aralin 5 - mais.mp3
+    - assets/audio/Aralin 5 - sisi.mp3
+    - assets/audio/Aralin 5 - iisa.mp3
+    - assets/audio/Aralin 5 - sa misa.mp3
+    - assets/audio/Aralin 5 - ang mais.mp3
+    - assets/audio/Aralin_5_Pagbasa.mp3
+    - assets/audio/Pagbasa5.mp3
+    - assets/audio/Aralin 6 - Oo (2).mp3 #Aralin 6 - Oo (2).mp3   
+    - assets/audio/Aralin 6 - Mo.mp3
+    - assets/audio/Aralin 6 - So.mp3
+    - assets/audio/Aralin 6 - Aso.mp3
+    - assets/audio/Aralin 6 - Oso.mp3
+    - assets/audio/Aralin 6 - amo.mp3
+    - assets/audio/Aralin 6 - Siso.mp3
+    - assets/audio/Aralin 6 - aamo.mp3
+    - assets/audio/Aralin 6 - ang oso.mp3
+    - assets/audio/Aralin 6 - ang miso.mp3
+    - assets/audio/Pagbasa6.mp3
+    - assets/audio/Aralin 7 - Ay.mp3 #Aralin 7 - Ay.mp3
+    - assets/audio/Aralin 7 - Ay aso.mp3
+    - assets/audio/Aralin 7 - Ay sasama.mp3
+    - assets/audio/Aralin 7 - ang aso ay.mp3
+    - assets/audio/Aralin 7 - Ang amo ay.mp3
+    - assets/audio/Aralin 7 - Si  mimi ay.mp3
+    - assets/audio/Pagbasa7.mp3
+    - assets/audio/Aralin 8 - Ee.mp3 #Aralin 8 - Ee.mp3
+    - assets/audio/Aralin 8 - Me.mp3
+    - assets/audio/Aralin 8 - Se.mp3
+    - assets/audio/Aralin 8 - Emi.mp3
+    - assets/audio/Aralin 8 - Ang mesa.mp3
+    - assets/audio/Aralin 8 - Ema.mp3
+    - assets/audio/Aralin 8 - Memo.mp3
+    - assets/audio/Aralin 8 - Si emi ay.mp3
+    - assets/audio/Pagbasa8.mp3 
+    - assets/audio/Aralin 9 - Uu.mp3 #Aralin 9 - Uu.mp3
+    - assets/audio/Aralin 9 - mu.mp3
+    - assets/audio/Aralin 9 - su.mp3
+    - assets/audio/Aralin 9 - usa.mp3
+    - assets/audio/Aralin  9 - uso.mp3
+    - assets/audio/Aralin 9 - susi.mp3
+    - assets/audio/Aralin 9 - umasa.mp3
+    - assets/audio/Aralin 9 - ang susi.mp3
+    - assets/audio/Aralin 9 - sumama.mp3
+    - assets/audio/Pagbasa9.mp3  
+    - assets/audio/Aralin 10 - Bb.mp3 #Aralin 10 - Bb.mp31010.mp3
+    - assets/audio/Aralin 10 - ba be bi bo bu.mp3
+    - assets/audio/Aralin 10 - aba .mp3
+    - assets/audio/Aralin 10 - iba.mp3
+    - assets/audio/Aralin 10 - bibo.mp3
+    - assets/audio/Aralin 10 - saba.mp3
+    - assets/audio/Aralin 10 - ang bao.mp3
+    - assets/audio/Aralin 10 - mababa.mp3
+    - assets/audio/Pagbasa10.mp3
+    - assets/audio/1010.mp3
+    - assets/audio/Aralin 11 - Tt.mp3 #Aralin 11 - Tt.mp3
+    - assets/audio/Aralin 11 - ta te ti to tu.mp3
+    - assets/audio/Aralin 11 - tao.mp3
+    - assets/audio/aralin 11 - tama.mp3
+    - assets/audio/Aralin 11 - tabo.mp3
+    - assets/audio/Aralin 11 - tito.mp3
+    - assets/audio/Aralin 11 - mataba.mp3
+    - assets/audio/Aralin 11 - ang tuta.mp3
+    - assets/audio/Pagbasa11.mp3
+    - assets/audio/Aralin 12 - Kk.mp3 #Aralin 12 - Kk.mp3
+    - assets/audio/Aralin 12 - ka ke ki ko ku.mp3
+    - assets/audio/Aralin 12 - ako.mp3
+    - assets/audio/Aralin 12 - sako.mp3
+    - assets/audio/Aralin 12 - kama.mp3
+    - assets/audio/Aralin 12 - kabibe.mp3
+    - assets/audio/Aralin 12 - bituka.mp3
+    - assets/audio/Pagbasa12.mp3
+    - assets/audio/Aralin 13 - Ll.mp3 #Aralin 13 - Ll.mp3
+    - assets/audio/Aralin 13 - la le li lo lu.mp3
+    - assets/audio/Aralin 13 - lola.mp3
+    - assets/audio/Aralin 13 - lata.mp3
+    - assets/audio/Aralin 13 - laso.mp3
+    - assets/audio/Aralin 13 - luma.mp3
+    - assets/audio/Aralin 13 - ulila.mp3
+    - assets/audio/Aralin 13 - malakas.mp3
+    - assets/audio/Pagbasa13.mp3
+    - assets/audio/Aralin 14 Yy.mp3 #Aralin 14 Yy.mp3
+    - assets/audio/Aralin 14 - ya ye yi yo yu.mp3
+    - assets/audio/Aralin 14 - yaya.mp3
+    - assets/audio/Aralin 14 - tayo.mp3
+    - assets/audio/Aralin 14 - saya.mp3
+    - assets/audio/Aralin 14 - biyaya.mp3
+    - assets/audio/Aralin 14 - may yoyo.mp3
+    - assets/audio/Pagbasa14.mp3
+    - assets/audio/Aralin 15 - Mga.mp3 #Aralin 15 - Mga.mp3
+    - assets/audio/Aralin 15 - ang mga susi.mp3
+    - assets/audio/Aralin 15 - ang mga kasama.mp3
+    - assets/audio/Aralin 15 -may mga yoyo.mp3
+    - assets/audio/Aralin 15 - ang mga kamay mo.mp3
+    - assets/audio/Aralin 15 - ang mga laso at lobo.mp3
+    - assets/audio/Pagbasa15.mp3
+    - assets/audio/Aralin 16 - Nn.mp3 #Aralin 16 - Nn.mp3
+    - assets/audio/Aralin 16 - na ne ni no nu.mp3
+    - assets/audio/Aralin 16 - ina.mp3
+    - assets/audio/Aralin 16 - sana.mp3
+    - assets/audio/Aralin 16 - sino.mp3
+    - assets/audio/Aralin 16 - nanalo.mp3
+    - assets/audio/Aralin 16 - ang unan.mp3
+    - assets/audio/Aralin 16 - bintana.mp3
+    - assets/audio/Pagbasa16.mp3
+    - assets/audio/Aralin 17 - Gg.mp3 #Aralin 17 - Gg.mp3
+    - assets/audio/Aralin 17 - ga ge gi go gu.mp3
+    - assets/audio/Aralin 17 - gabi.mp3
+    - assets/audio/Aralin 17 - gasa.mp3
+    - assets/audio/Aralin 17 - gamot.mp3
+    - assets/audio/Aralin 17 - gatas.mp3
+    - assets/audio/Aralin 17 - kagabi.mp3
+    - assets/audio/Aralin 17 - malusog.mp3
+    - assets/audio/Pagbasa17.mp3
+    - assets/audio/Aralin 18 - Rr.mp3 #Aralin 18 - Rr.mp3
+    - assets/audio/Aralin 18 - ra re ri ro ru.mp3
+    - assets/audio/Aralin 18 - relo.mp3
+    - assets/audio/Aralin 18 - tara.mp3
+    - assets/audio/Aralin 18 - laro.mp3
+    - assets/audio/Aralin 18 - regalo.mp3
+    - assets/audio/Aralin 18 - raketa.mp3
+    - assets/audio/Aralin 18 - robot.mp3
+    - assets/audio/Pagbasa18.mp3
+    - assets/audio/Aralin 19 - Pp.mp3 #Aralin 19 - Pp.mp3
+    - assets/audio/Aralin 19 - pa pe pi po pu.mp3
+    - assets/audio/Aralin 19 - paa.mp3
+    - assets/audio/Aralin 19 - pusa.mp3
+    - assets/audio/Aralin 19 - pito.mp3
+    - assets/audio/Aralin 19 - pera.mp3
+    - assets/audio/Aralin 19 - paborito.mp3
+    - assets/audio/Aralin 19 - si pepito.mp3
+    - assets/audio/Pagbasa19.mp3
+    - assets/audio/Aralin 20 - Ng.mp3 # Aralin 20 - Ng.mp3
+    - assets/audio/Aralin 20 - ng nanay.mp3
+    - assets/audio/Aralin 20 - ng aso.mp3
+    - assets/audio/Aralin 20 - ng maya.mp3
+    - assets/audio/Aralin 20 - amo ng aso.mp3
+    - assets/audio/Aralin 20 - ulo ng osa.mp3
+    - assets/audio/Pagbasa20.mp3
+    - assets/audio/Aralin 21 - Dd.mp3 #Aralin 21 - Dd.mp3
+    - assets/audio/Aralin 21 - da de di do du.mp3
+    - assets/audio/Aralin 21 - daga.mp3
+    - assets/audio/Aralin 21 - damo.mp3
+    - assets/audio/Aralin 21 - dapa.mp3
+    - assets/audio/Aralin 21 - dako.mp3
+    - assets/audio/Aralin 21 - ang dagat.mp3
+    - assets/audio/Aralin 21 - may daan.mp3
+    - assets/audio/Pagbasa21.mp3
+    - assets/audio/Aralin 22 - Hh.mp3 #Aralin 22 - Hh.mp3
+    - assets/audio/Aralin 22 - ha he hi ho hu.mp3
+    - assets/audio/Aralin 22 - haba.mp3
+    - assets/audio/Aralin 22 - halo.mp3
+    - assets/audio/Aralin 22 - heto.mp3
+    - assets/audio/Aralin 22 - hita.mp3
+    - assets/audio/Aralin 22 - hipon.mp3
+    - assets/audio/Aralin 22 - holen.mp3
+    - assets/audio/Pagbasa22.mp3
+    - assets/audio/Aralin 23 - Ww.mp3 #Aralin 23 - Ww.mp3
+    - assets/audio/Aralin 23 - wa we wi wo wu.mp3
+    - assets/audio/Aralin 23 - wala.mp3
+    - assets/audio/Aralin 23 - wika.mp3
+    - assets/audio/Aralin 23 - kawali.mp3
+    - assets/audio/Aralin 23 - kawawa.mp3
+    - assets/audio/Aralin 23 - sa wakas.mp3
+    - assets/audio/Aralin 23 - may walis.mp3
+    - assets/audio/Pagbasa23.mp3
+    - assets/audio/Aralin 24 - Ng.mp3  # Aralin 24 - Ng.mp3
+    - assets/audio/Aralin 24 - ang eng ing ong ung.mp3
+    - assets/audio/Aralin 24 - isang.mp3
+    - assets/audio/Aralin 24 - lamang.mp3
+    - assets/audio/Aralin 24 - singsing.mp3 
+    - assets/audio/Aralin 24 - kangkong.mp3 
+    - assets/audio/Pagbasa24.mp3
+    - assets/audio/Aralin 25 - Ng-.mp3 #Aralin 25 - Ng-.mp3
+    - assets/audio/Aralin 25 - nga nge ngi ngo ngu.mp3
+    - assets/audio/Aralin 25 - nganga.mp3
+    - assets/audio/Aralin 25 - nguso.mp3
+    - assets/audio/Aralin 25 - banga.mp3
+    - assets/audio/Aralin 25 - langka.mp3
+    - assets/audio/Pagbasa25.mp3
+    - assets/audio/Laro 23 - Walis.mp3 #LARO
+    - assets/audio/Laro 23 - Walo.mp3
+    - assets/audio/Laro 23 - Watawat - Copy.mp3
+    - assets/audio/Laro 22 - Hipon.mp3  #C:\APP.T_T\flutter_application_4\assets\walo.jpg
+    - assets/audio/Laro 1 - Mani.mp3 #2
+    - assets/audio/Laro 1 - Mata.mp3 #2
+    - assets/audio/Laro 2 - Salamin.mp3 #2
+    - assets/audio/Laro 2 - Sibuyas.mp3 #2
+    - assets/audio/Laro 2 - Siko.mp3 #2
+    - assets/audio/Laro 2 - Susi.mp3 #2
+    - assets/audio/Laro 5 - Ilong.mp3 #2
+    - assets/audio/Laro 5 - Ina.mp3 #2
+    - assets/audio/Laro 5 - Ipis.mp3 #2
+    - assets/audio/Laro 5 - Itlog.mp3 #2
+    - assets/audio/Laro 6 - Okra.mp3 #333333333
+    - assets/audio/Laro 22 - Hikaw.mp3 #333333333333
+    - assets/audio/Laro 8 - Elepante.mp3 #333333333333
+    - assets/audio/Laro 8 - Eroplano.mp3 #333333333333
+    - assets/audio/Laro 9 - Ubas.mp3 #333333333333
+    - assets/audio/Laro 10 - Bata.mp3 #333333333333
+    - assets/audio/Laro 10 - Baka.mp3 #333333333333
+    - assets/audio/Laro 11 - Tigre.mp3 #333333333333
+    - assets/audio/Laro 11 - Tinidor.mp3 #333333333333
+    - assets/audio/Laro 12 - Kabayo.mp3 #333333333333
+    - assets/audio/Laro 12 - Kamatis.mp3 #333333333333
+    - assets/audio/Laro 13 - Lata.mp3 #333333333333
+    - assets/audio/Laro 13 - Lima.mp3 #333333333333
+    - assets/audio/Laro 14 - Yoyo.mp3 #333333333333
+    - assets/audio/Laro 17 - Gagamba.mp3 #333333333333
+    - assets/audio/wetewat.mp3 #333333333333
+    - assets/audio/ASOOO.mp3 #333333333333
+    - assets/audio/wawi.mp3
+    - assets/audio/ng1.mp3
+    - assets/audio/Ii2.mp3
+    - assets/audio/Aa3.mp3
+    
+  
+    
+    
+
+
+
+
+
+
+
+
+
+    
+
+    
+    
+  # C:\APP.T_T\flutter_application_4\assets\audio\Aralin 4 - ang sasama.mp3
+    
+
+
+
+
+
+
+
+
+
+    # - assets/audio/another_sound.mp3
+    - assets/logo1.jpg  # Correctly indented
+    - assets/manga.jpg
+    - assets/blue.jpg
+    - assets/Bg22.png
+    - assets/waliss.png #Laro
+    - assets/watawat-removebg-preview.png
+    - assets/walo.jpg
+    - assets/Mani.png # g2
+    - assets/Mata.png
+    - assets/salin.png
+    - assets/sibuyas.png
+    - assets/Siko.png
+    - assets/susi.png
+    - assets/ilong.png
+    - assets/Ina.png
+    - assets/Ipis.png
+    - assets/itlog.png
+    - assets/okra.png # g3
+    - assets/hikaw.png
+    - assets/elepante.png
+    - assets/eroplano.png
+    - assets/ubas.png
+    - assets/bata.png
+    - assets/Baka.png
+    - assets/tigre.png
+    - assets/tinidor.png
+    - assets/kabayo.png
+    - assets/Kamatis.png
+    - assets/Lata.png
+    - assets/lima.png
+    - assets/yoyo.png
+    - assets/gagamba.png
+
+# Uncomment and customize the following section if you're adding fonts
+# fonts:
+#   - family: Schyler
+#     fonts:
+#       - asset: fonts/Schyler-Regular.ttf
+#       - asset: fonts/Schyler-Italic.ttf
+#         style: italic
+#   - family: Trajan Pro
+#     fonts:
+#       - asset: fonts/TrajanPro.ttf
+#       - asset: fonts/TrajanPro_Bold.ttf
+#         weight: 700
