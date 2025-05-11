@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter_application_4/lessons/lesson1.dart';
+import 'package:simula_sa_pagbasa/lessons/lesson1.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AralinDetailPage3 extends StatefulWidget {
