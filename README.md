@@ -1,6 +1,6 @@
-# SImula sa Pagbasa
+# Simula sa Pagbasa sa Marungko
 
-A new Flutter project.
+A Capstone 2 project.
 
 ## Getting Started
 
