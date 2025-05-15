@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,8 +13,11 @@ class Lesson14_14 extends StatefulWidget {
 class _Lesson14_14State extends State<Lesson14_14> with WidgetsBindingObserver {
   final String title = 'Aralin 14.14';
   final AudioPlayer _audioPlayer = AudioPlayer();
-  bool isPlaying = false;
-  int currentWordIndex = -1; // Initialize to -1 to hide highlight initially
+  bool _isPlaying = false;
+  bool _isPaused = false;
+  int _currentWordIndex = -1;
+  Duration _currentPosition = Duration.zero;
+  Timer? _syncTimer;
 
   final String textContent = '''
 Si kuya ay masaya.
@@ -25,21 +29,11 @@ Sila ay masaya.
 
   List<String> words = [];
 
-  // Updated custom timestamps for each word in milliseconds
   final List<int> wordTimings = [
-    // "Si kuya ay masaya." (3.23 seconds, 4 words)
     0, 808, 1616, 2424,
-
-    // "Siya ay may yoyo." (2.86 seconds, 4 words)
     3230, 3945, 4660, 5375,
-
-    // "Ito ay biyaya." (2.73 seconds, 3 words)
     6090, 7000, 7910,
-
-    // "Sumama si kuya kay yaya." (4.03 seconds, 5 words)
     8640, 9446, 10252, 11058, 11864,
-
-    // "Sila ay masaya." (2.40 seconds, 4 words)
     12870, 13470, 14070, 14670,
   ];
 
@@ -48,65 +42,113 @@ Sila ay masaya.
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     words = textContent.split(RegExp(r'\s+'));
+    _audioPlayer.onPlayerComplete.listen(_handleAudioComplete);
   }
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     _audioPlayer.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  Future<void> markLessonAsDone(BuildContext context) async {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _audioPlayer.stop();
+      setState(() {
+        _isPlaying = false;
+        _isPaused = false;
+        _currentWordIndex = -1;
+      });
+    }
+  }
+
+  void _handleAudioComplete(void _) {
+    _syncTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _isPlaying = false;
+        _isPaused = false;
+        _currentWordIndex = -1; // ✅ remove red highlight at the end
+      });
+    }
+  }
+
+  Future<void> _stopPlayback() async {
+    _syncTimer?.cancel();
     await _audioPlayer.stop();
     setState(() {
-      isPlaying = false;
-      currentWordIndex = -1; // Reset highlight
+      _isPlaying = false;
+      _isPaused = false;
+      _currentWordIndex = -1;
     });
+  }
 
+  Future<void> _pausePlayback() async {
+    final pos = await _audioPlayer.getCurrentPosition();
+    _currentPosition = pos ?? Duration.zero;
+    await _audioPlayer.pause();
+    _isPaused = true;
+    _syncTimer?.cancel();
+    setState(() {});
+  }
+
+  Future<void> _resumeOrPlay() async {
+    if (_isPaused) {
+      await _audioPlayer.resume();
+      _isPaused = false;
+      _isPlaying = true;
+      _startTextSync();
+      setState(() {});
+    } else {
+      await _playText();
+    }
+  }
+
+  Future<void> _playText() async {
+    await _stopPlayback();
+    const audioPath = 'audio/Pagbasa14.mp3';
+    await _audioPlayer.play(AssetSource(audioPath));
+    _isPlaying = true;
+    _isPaused = false;
+    _currentPosition = Duration.zero;
+    _startTextSync();
+    setState(() {});
+  }
+
+  void _startTextSync() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(milliseconds: 100), (_) async {
+      final pos = await _audioPlayer.getCurrentPosition();
+      final ms = pos?.inMilliseconds ?? 0;
+
+      int wordIndex = -1;
+      for (int i = 0; i < wordTimings.length; i++) {
+        if (ms >= wordTimings[i]) {
+          wordIndex = i;
+        } else {
+          break;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentWordIndex = wordIndex;
+        });
+      }
+    });
+  }
+
+  Future<void> markLessonAsDone(BuildContext context) async {
+    await _stopPlayback();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(title, true);
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => AralinPage()),
     );
-  }
-
-  void _playText() async {
-    const audioPath = 'audio/Pagbasa14.mp3';
-
-    try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(AssetSource(audioPath));
-      setState(() {
-        isPlaying = true;
-        currentWordIndex = 0; // Start with the first word
-      });
-      _syncTextWithAudio();
-
-      // Reset highlight when audio finishes
-      _audioPlayer.onPlayerComplete.listen((event) {
-        setState(() {
-          currentWordIndex = -1; // Remove highlight when audio ends
-          isPlaying = false;
-        });
-      });
-    } catch (e) {
-      print('Error playing sound: $e');
-    }
-  }
-
-  void _syncTextWithAudio() {
-    for (int i = 0; i < wordTimings.length; i++) {
-      Future.delayed(Duration(milliseconds: wordTimings[i]), () {
-        if (mounted) {
-          setState(() {
-            currentWordIndex = i;
-          });
-        }
-      });
-    }
   }
 
   @override
@@ -122,7 +164,7 @@ Sila ay masaya.
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            _audioPlayer.stop();
+            _stopPlayback();
             Navigator.pop(context);
           },
         ),
@@ -168,7 +210,7 @@ Sila ay masaya.
                         style: GoogleFonts.lexendDeca(
                           fontSize: fontSize,
                           fontWeight: FontWeight.bold,
-                          color: index == currentWordIndex ? Colors.red : Colors.black,
+                          color: index == _currentWordIndex ? Colors.red : Colors.black,
                         ),
                       );
                     }).toList(),
@@ -178,8 +220,20 @@ Sila ay masaya.
               ),
               const SizedBox(height: 30),
               IconButton(
-                icon: const Icon(Icons.play_circle_outline, color: Colors.green, size: 60),
-                onPressed: _playText,
+                icon: Icon(
+                  _isPlaying
+                      ? (_isPaused ? Icons.play_circle_outline : Icons.pause_circle_outline)
+                      : Icons.play_circle_outline,
+                  color: Colors.green,
+                  size: 60,
+                ),
+                onPressed: () {
+                  if (_isPlaying && !_isPaused) {
+                    _pausePlayback();
+                  } else {
+                    _resumeOrPlay();
+                  }
+                },
               ),
             ],
           ),
@@ -191,6 +245,10 @@ Sila ay masaya.
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
             padding: const EdgeInsets.symmetric(vertical: 15),
+            textStyle: GoogleFonts.comicNeue(fontSize: 18, fontWeight: FontWeight.bold),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
           onPressed: () => markLessonAsDone(context),
           child: const Text('Susunod'),

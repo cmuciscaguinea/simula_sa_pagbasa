@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,10 +11,12 @@ class Lesson23_23 extends StatefulWidget {
 }
 
 class _Lesson23_23State extends State<Lesson23_23> with WidgetsBindingObserver {
-  final String title = 'Aralin 23.23'; // Title to track completion in SharedPreferences
+  final String title = 'Aralin 23.23';
   final AudioPlayer _audioPlayer = AudioPlayer();
-  bool isPlaying = false;
-  int currentWordIndex = -1; // Initialize to -1 to hide highlight initially
+  bool _isPlaying = false;
+  bool _isPaused = false;
+  int _currentWordIndex = -1;
+  Timer? _syncTimer;
 
   final String textContent = '''
 Si Wako ay may aso.
@@ -25,24 +28,25 @@ Naawa si Wako kay Wowi.
 
   List<String> words = [];
 
-  // Word timings (in milliseconds)
   final List<int> wordTimings = [
-    0, 700, 1400, 2100, 3100, // Si Wako ay may aso. (3.10 sec)
-    3900, 4800, 5700, 6600, 7120, // Ang aso ay si Wowi. (3.22 sec)
-    7920, 8800, 9700, 10600, 11200, // Si Wowi ay may kanin. (3.28 sec)
-    12000, 12900, 13800, 14700, 15340, // Ayaw kumain ni Wowi. (3.40 sec)
-    16340, 17240, 18140, 19040, 19940, 20840, 21740, 22640, 23540, 24440, 25340, 26240, 27340, // Naawa si Wako kay Wowi. (3.65 sec)
+    0, 700, 1400, 2100, 3100,
+    3900, 4800, 5700, 6600, 7120,
+    7920, 8800, 9700, 10600, 11200,
+    12000, 12900, 13800, 14700, 15340,
+    16340, 17240, 18140, 19040, 19940, 20840, 21740, 22640, 23540, 24440, 25340, 26240, 27340,
   ];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    words = textContent.split(RegExp(r'\s+')); // Split text into words
+    words = textContent.split(RegExp(r'\s+'));
+    _audioPlayer.onPlayerComplete.listen(_handleAudioComplete);
   }
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     _audioPlayer.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -53,64 +57,95 @@ Naawa si Wako kay Wowi.
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       _audioPlayer.stop();
       setState(() {
-        isPlaying = false;
+        _isPlaying = false;
+        _isPaused = false;
+        _currentWordIndex = -1;
       });
     }
   }
 
-  Future<void> markLessonAsDone(BuildContext context) async {
+  void _handleAudioComplete(void _) {
+    _syncTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _isPlaying = false;
+        _isPaused = false;
+        _currentWordIndex = -1;
+      });
+    }
+  }
+
+  Future<void> _stopPlayback() async {
+    _syncTimer?.cancel();
     await _audioPlayer.stop();
     setState(() {
-      isPlaying = false;
-      currentWordIndex = -1; // Reset highlight
+      _isPlaying = false;
+      _isPaused = false;
+      _currentWordIndex = -1;
     });
+  }
 
+  Future<void> _pausePlayback() async {
+    await _audioPlayer.pause();
+    _isPaused = true;
+    _syncTimer?.cancel();
+    setState(() {});
+  }
+
+  Future<void> _resumeOrPlay() async {
+    if (_isPaused) {
+      await _audioPlayer.resume();
+      _isPaused = false;
+      _isPlaying = true;
+      _startTextSync();
+      setState(() {});
+    } else {
+      await _playText();
+    }
+  }
+
+  Future<void> _playText() async {
+    await _stopPlayback();
+    const audioPath = 'audio/Pagbasa23.mp3';
+    await _audioPlayer.play(AssetSource(audioPath));
+    _isPlaying = true;
+    _isPaused = false;
+    _startTextSync();
+    setState(() {});
+  }
+
+  void _startTextSync() {
+    _syncTimer?.cancel();
+
+    _syncTimer = Timer.periodic(const Duration(milliseconds: 100), (_) async {
+      final pos = await _audioPlayer.getCurrentPosition();
+      final ms = pos?.inMilliseconds ?? 0;
+
+      int wordIndex = -1;
+      for (int i = 0; i < wordTimings.length; i++) {
+        if (ms >= wordTimings[i]) {
+          wordIndex = i;
+        } else {
+          break;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentWordIndex = wordIndex;
+        });
+      }
+    });
+  }
+
+  Future<void> markLessonAsDone(BuildContext context) async {
+    await _stopPlayback();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(title, true);
-
-    // Navigate to AralinPage
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => AralinPage()),
     );
-  }
-
-  void _playText() async {
-    const audioPath = 'audio/Pagbasa23.mp3'; // Updated audio file path
-
-    try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(AssetSource(audioPath));
-      setState(() {
-        isPlaying = true;
-        currentWordIndex = 0; // Start highlighting from the first word
-      });
-      _syncTextWithAudio();
-
-      // Reset state when audio finishes
-      _audioPlayer.onPlayerComplete.listen((event) {
-        if (mounted) {
-          setState(() {
-            isPlaying = false;
-            currentWordIndex = -1; // Hide highlight
-          });
-        }
-      });
-    } catch (e) {
-      print('Error playing sound: $e');
-    }
-  }
-
-  void _syncTextWithAudio() {
-    for (int i = 0; i < wordTimings.length; i++) {
-      Future.delayed(Duration(milliseconds: wordTimings[i]), () {
-        if (mounted && isPlaying) {
-          setState(() {
-            currentWordIndex = i;
-          });
-        }
-      });
-    }
   }
 
   @override
@@ -126,7 +161,7 @@ Naawa si Wako kay Wowi.
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            _audioPlayer.stop();
+            _stopPlayback();
             Navigator.pop(context);
           },
         ),
@@ -140,7 +175,7 @@ Naawa si Wako kay Wowi.
               Text(
                 'Ang Aso ni Wako',
                 style: GoogleFonts.lexendDeca(
-                  fontSize: 40,
+                  fontSize: 35,
                   fontWeight: FontWeight.bold,
                   color: Colors.red,
                 ),
@@ -172,7 +207,7 @@ Naawa si Wako kay Wowi.
                         style: GoogleFonts.lexendDeca(
                           fontSize: fontSize,
                           fontWeight: FontWeight.bold,
-                          color: index == currentWordIndex ? Colors.red : Colors.black,
+                          color: index == _currentWordIndex ? Colors.red : Colors.black,
                         ),
                       );
                     }).toList(),
@@ -182,8 +217,20 @@ Naawa si Wako kay Wowi.
               ),
               const SizedBox(height: 30),
               IconButton(
-                icon: const Icon(Icons.play_circle_outline, color: Colors.green, size: 60),
-                onPressed: _playText,
+                icon: Icon(
+                  _isPlaying
+                      ? (_isPaused ? Icons.play_circle_outline : Icons.pause_circle_outline)
+                      : Icons.play_circle_outline,
+                  color: Colors.green,
+                  size: 60,
+                ),
+                onPressed: () {
+                  if (_isPlaying && !_isPaused) {
+                    _pausePlayback();
+                  } else {
+                    _resumeOrPlay();
+                  }
+                },
               ),
             ],
           ),

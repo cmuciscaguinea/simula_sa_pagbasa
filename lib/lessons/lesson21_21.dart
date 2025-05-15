@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,10 +11,12 @@ class Lesson21_21 extends StatefulWidget {
 }
 
 class _Lesson21_21State extends State<Lesson21_21> with WidgetsBindingObserver {
-  final String title = 'Aralin 21.21'; // Title to track completion in SharedPreferences
+  final String title = 'Aralin 21.21';
   final AudioPlayer _audioPlayer = AudioPlayer();
-  bool isPlaying = false;
-  int currentWordIndex = -1; // Initialize to -1 to hide highlight initially
+  bool _isPlaying = false;
+  bool _isPaused = false;
+  int _currentWordIndex = -1;
+  Timer? _syncTimer;
 
   final String textContent = '''
 Sa dulo ay may daan.
@@ -25,24 +28,25 @@ Dala ni Dina ang alaga na daga.
 
   List<String> words = [];
 
-  // Word timings (in milliseconds)
   final List<int> wordTimings = [
-    0, 800, 1600, 2400, 3220, // Sa dulo ay may daan. (3.22 sec)
-    4020, 4820, 5620, 6420, 7220, 8110, // Daan ito papunta sa dagat. (3.89 sec)
-    8910, 9710, 10510, 11310, 12390, // May dampa malapit sa dagat. (3.28 sec)
-    13190, 13990, 14790, 15590, 16390, 17220, // Pumunta si Dina sa dampa. (3.63 sec)
-    18020, 18820, 19620, 20420, 21220, 22020, 22820, 23620, 24420, 25220, 26020, 26820, 27620, // Dala ni Dina ang alaga na daga. (5.47 sec)
+    0, 800, 1600, 2400, 3220,
+    4020, 4820, 5620, 6420, 7220, 8110,
+    8910, 9710, 10510, 11310, 12390,
+    13190, 13990, 14790, 15590, 16390, 17220,
+    18020, 18820, 19620, 20420, 21220, 22020, 22820, 23620, 24420, 25220, 26020, 26820, 27620
   ];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    words = textContent.split(RegExp(r'\s+')); // Split text into words
+    words = textContent.split(RegExp(r'\s+'));
+    _audioPlayer.onPlayerComplete.listen(_handleAudioComplete);
   }
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     _audioPlayer.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -53,64 +57,97 @@ Dala ni Dina ang alaga na daga.
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       _audioPlayer.stop();
       setState(() {
-        isPlaying = false;
+        _isPlaying = false;
+        _isPaused = false;
+        _currentWordIndex = -1;
       });
     }
   }
 
-  Future<void> markLessonAsDone(BuildContext context) async {
+  void _handleAudioComplete(void _) {
+    _syncTimer?.cancel();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _isPlaying = false;
+          _isPaused = false;
+          _currentWordIndex = -1;
+        });
+      }
+    });
+  }
+
+  Future<void> _stopPlayback() async {
+    _syncTimer?.cancel();
     await _audioPlayer.stop();
     setState(() {
-      isPlaying = false;
-      currentWordIndex = -1; // Reset highlight
+      _isPlaying = false;
+      _isPaused = false;
+      _currentWordIndex = -1;
     });
+  }
 
+  Future<void> _pausePlayback() async {
+    await _audioPlayer.pause();
+    _isPaused = true;
+    _syncTimer?.cancel();
+    setState(() {});
+  }
+
+  Future<void> _resumeOrPlay() async {
+    if (_isPaused) {
+      await _audioPlayer.resume();
+      _isPaused = false;
+      _isPlaying = true;
+      _startTextSync();
+      setState(() {});
+    } else {
+      await _playText();
+    }
+  }
+
+  Future<void> _playText() async {
+    await _stopPlayback();
+    const audioPath = 'audio/Pagbasa21.mp3';
+    await _audioPlayer.play(AssetSource(audioPath));
+    _isPlaying = true;
+    _isPaused = false;
+    _startTextSync();
+    setState(() {});
+  }
+
+  void _startTextSync() {
+    _syncTimer?.cancel();
+
+    _syncTimer = Timer.periodic(const Duration(milliseconds: 100), (_) async {
+      final pos = await _audioPlayer.getCurrentPosition();
+      final ms = pos?.inMilliseconds ?? 0;
+
+      int wordIndex = -1;
+      for (int i = 0; i < wordTimings.length; i++) {
+        if (ms >= wordTimings[i]) {
+          wordIndex = i;
+        } else {
+          break;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentWordIndex = wordIndex;
+        });
+      }
+    });
+  }
+
+  Future<void> markLessonAsDone(BuildContext context) async {
+    await _stopPlayback();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(title, true);
-
-    // Navigate to AralinPage
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => AralinPage()),
     );
-  }
-
-  void _playText() async {
-    const audioPath = 'audio/Pagbasa21.mp3'; // Updated audio file path
-
-    try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(AssetSource(audioPath));
-      setState(() {
-        isPlaying = true;
-        currentWordIndex = 0; // Start highlighting from the first word
-      });
-      _syncTextWithAudio();
-
-      // Reset state when audio finishes
-      _audioPlayer.onPlayerComplete.listen((event) {
-        if (mounted) {
-          setState(() {
-            isPlaying = false;
-            currentWordIndex = -1; // Hide highlight
-          });
-        }
-      });
-    } catch (e) {
-      print('Error playing sound: $e');
-    }
-  }
-
-  void _syncTextWithAudio() {
-    for (int i = 0; i < wordTimings.length; i++) {
-      Future.delayed(Duration(milliseconds: wordTimings[i]), () {
-        if (mounted) {
-          setState(() {
-            currentWordIndex = i;
-          });
-        }
-      });
-    }
   }
 
   @override
@@ -126,7 +163,7 @@ Dala ni Dina ang alaga na daga.
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            _audioPlayer.stop();
+            _stopPlayback();
             Navigator.pop(context);
           },
         ),
@@ -172,7 +209,7 @@ Dala ni Dina ang alaga na daga.
                         style: GoogleFonts.lexendDeca(
                           fontSize: fontSize,
                           fontWeight: FontWeight.bold,
-                          color: index == currentWordIndex ? Colors.red : Colors.black,
+                          color: index == _currentWordIndex ? Colors.red : Colors.black,
                         ),
                       );
                     }).toList(),
@@ -182,8 +219,20 @@ Dala ni Dina ang alaga na daga.
               ),
               const SizedBox(height: 30),
               IconButton(
-                icon: const Icon(Icons.play_circle_outline, color: Colors.green, size: 60),
-                onPressed: _playText,
+                icon: Icon(
+                  _isPlaying
+                      ? (_isPaused ? Icons.play_circle_outline : Icons.pause_circle_outline)
+                      : Icons.play_circle_outline,
+                  color: Colors.green,
+                  size: 60,
+                ),
+                onPressed: () {
+                  if (_isPlaying && !_isPaused) {
+                    _pausePlayback();
+                  } else {
+                    _resumeOrPlay();
+                  }
+                },
               ),
             ],
           ),

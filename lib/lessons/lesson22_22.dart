@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,36 +11,39 @@ class Lesson22_22 extends StatefulWidget {
 }
 
 class _Lesson22_22State extends State<Lesson22_22> with WidgetsBindingObserver {
-  final String title = 'Aralin 22.22'; // Title to track completion in SharedPreferences
+  final String title = 'Aralin 22.22';
   final AudioPlayer _audioPlayer = AudioPlayer();
-  bool isPlaying = false;
-  int currentWordIndex = -1; // Initialize to -1 to hide highlight initially
+  bool _isPlaying = false;
+  bool _isPaused = false;
+  int _currentWordIndex = -1;
+  Timer? _syncTimer;
 
   final String textContent = '''
 Bumili ng holen si Helen. Mahilig
-si Helen sa holen. Nilalaro niya ito kasama si Hugo.
-Si Hugo ay mahusay rin sa paglalaro ng holen.
+si Helen ng holen. Nilalaro niya ito kasama si Hugo.
+Si Hugo ay mahusay rin sa paglalaro ng.
 ''';
 
   List<String> words = [];
 
-  // Word timings (in milliseconds)
   final List<int> wordTimings = [
-    0, 1000, 2000, 3000, 4000, 4210, // Bumili ng holen si Helen. (4.21 sec)
-    5210, 6210, 7210, 8210, 9210, 10080, // Mahilig si Helen sa holen. (4.87 sec)
-    11080, 12080, 13080, 14080, 15080, 16080, 17080, // Nilalaro niya ito kasama si Hugo. (6.00 sec)
-    18080, 19080, 20080, 21080, 22080, 23080, 24080, 25080, 26080, 27080, 28080, 29080, 30080, // Si Hugo ay mahusay rin sa paglalaro ng holen. (7.30 sec)
+    0, 1000, 2000, 3000, 4000, 4210,
+    5210, 6210, 7210, 8210, 9210, 10080,
+    11080, 12080, 13080, 14080, 15080, 16080, 17080,
+    18080, 19080, 20080, 21080, 22080, 23080, 24080, 25080, 26080, 27080, 28080,
   ];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    words = textContent.split(RegExp(r'\s+')); // Split text into words
+    words = textContent.split(RegExp(r'\s+'));
+    _audioPlayer.onPlayerComplete.listen(_handleAudioComplete);
   }
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     _audioPlayer.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -50,64 +54,106 @@ Si Hugo ay mahusay rin sa paglalaro ng holen.
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       _audioPlayer.stop();
       setState(() {
-        isPlaying = false;
+        _isPlaying = false;
+        _isPaused = false;
+        _currentWordIndex = -1;
       });
     }
   }
 
-  Future<void> markLessonAsDone(BuildContext context) async {
+  void _handleAudioComplete(void _) {
+    _syncTimer?.cancel();
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        setState(() {
+          _isPlaying = false;
+          _isPaused = false;
+          _currentWordIndex = -1; // ✅ clear red highlight
+        });
+      }
+    });
+  }
+
+  Future<void> _stopPlayback() async {
+    _syncTimer?.cancel();
     await _audioPlayer.stop();
     setState(() {
-      isPlaying = false;
-      currentWordIndex = -1; // Reset highlight
+      _isPlaying = false;
+      _isPaused = false;
+      _currentWordIndex = -1;
+    });
+  }
+
+  Future<void> _pausePlayback() async {
+    await _audioPlayer.pause();
+    _isPaused = true;
+    _syncTimer?.cancel();
+    setState(() {});
+  }
+
+  Future<void> _resumeOrPlay() async {
+    if (_isPaused) {
+      await _audioPlayer.resume();
+      _isPaused = false;
+      _isPlaying = true;
+      _startTextSync();
+      setState(() {});
+    } else {
+      await _playText();
+    }
+  }
+
+  Future<void> _playText() async {
+    await _stopPlayback();
+    const audioPath = 'audio/Pagbasa22.mp3';
+    await _audioPlayer.play(AssetSource(audioPath));
+    _isPlaying = true;
+    _isPaused = false;
+    _startTextSync();
+    setState(() {});
+  }
+
+  void _startTextSync() {
+    _syncTimer?.cancel();
+
+    _syncTimer = Timer.periodic(const Duration(milliseconds: 100), (_) async {
+      final pos = await _audioPlayer.getCurrentPosition();
+      final ms = pos?.inMilliseconds ?? 0;
+
+      int wordIndex = -1;
+      for (int i = 0; i < wordTimings.length; i++) {
+        if (ms >= wordTimings[i]) {
+          wordIndex = i;
+        } else {
+          break;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentWordIndex = wordIndex;
+        });
+      }
     });
 
+    // ✅ fallback to clear highlight in case onPlayerComplete misses
+    Future.delayed(Duration(milliseconds: wordTimings.last + 500), () {
+      if (mounted && _isPlaying) {
+        setState(() {
+          _currentWordIndex = -1;
+        });
+      }
+    });
+  }
+
+  Future<void> markLessonAsDone(BuildContext context) async {
+    await _stopPlayback();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(title, true);
-
-    // Navigate to AralinPage
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => AralinPage()),
     );
-  }
-
-  void _playText() async {
-    const audioPath = 'audio/Pagbasa22.mp3'; // Updated audio file path
-
-    try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(AssetSource(audioPath));
-      setState(() {
-        isPlaying = true;
-        currentWordIndex = 0; // Start highlighting from the first word
-      });
-      _syncTextWithAudio();
-
-      // Reset state when audio finishes
-      _audioPlayer.onPlayerComplete.listen((event) {
-        if (mounted) {
-          setState(() {
-            isPlaying = false;
-            currentWordIndex = -1; // Hide highlight
-          });
-        }
-      });
-    } catch (e) {
-      print('Error playing sound: $e');
-    }
-  }
-
-  void _syncTextWithAudio() {
-    for (int i = 0; i < wordTimings.length; i++) {
-      Future.delayed(Duration(milliseconds: wordTimings[i]), () {
-        if (mounted) {
-          setState(() {
-            currentWordIndex = i;
-          });
-        }
-      });
-    }
   }
 
   @override
@@ -123,7 +169,7 @@ Si Hugo ay mahusay rin sa paglalaro ng holen.
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            _audioPlayer.stop();
+            _stopPlayback();
             Navigator.pop(context);
           },
         ),
@@ -137,7 +183,7 @@ Si Hugo ay mahusay rin sa paglalaro ng holen.
               Text(
                 'Holen ni Helen',
                 style: GoogleFonts.lexendDeca(
-                  fontSize: 40,
+                  fontSize: 35,
                   fontWeight: FontWeight.bold,
                   color: Colors.red,
                 ),
@@ -169,7 +215,7 @@ Si Hugo ay mahusay rin sa paglalaro ng holen.
                         style: GoogleFonts.lexendDeca(
                           fontSize: fontSize,
                           fontWeight: FontWeight.bold,
-                          color: index == currentWordIndex ? Colors.red : Colors.black,
+                          color: index == _currentWordIndex ? Colors.red : Colors.black,
                         ),
                       );
                     }).toList(),
@@ -179,8 +225,20 @@ Si Hugo ay mahusay rin sa paglalaro ng holen.
               ),
               const SizedBox(height: 30),
               IconButton(
-                icon: const Icon(Icons.play_circle_outline, color: Colors.green, size: 60),
-                onPressed: _playText,
+                icon: Icon(
+                  _isPlaying
+                      ? (_isPaused ? Icons.play_circle_outline : Icons.pause_circle_outline)
+                      : Icons.play_circle_outline,
+                  color: Colors.green,
+                  size: 60,
+                ),
+                onPressed: () {
+                  if (_isPlaying && !_isPaused) {
+                    _pausePlayback();
+                  } else {
+                    _resumeOrPlay();
+                  }
+                },
               ),
             ],
           ),

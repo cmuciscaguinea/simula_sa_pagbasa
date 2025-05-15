@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,10 +11,12 @@ class Lesson19_19 extends StatefulWidget {
 }
 
 class _Lesson19_19State extends State<Lesson19_19> with WidgetsBindingObserver {
-  final String title = 'Aralin 19.19'; // Title to track completion in SharedPreferences
+  final String title = 'Aralin 19.19';
   final AudioPlayer _audioPlayer = AudioPlayer();
-  bool isPlaying = false;
-  int currentWordIndex = -1; // Initialize to -1 to hide highlight initially
+  bool _isPlaying = false;
+  bool _isPaused = false;
+  int _currentWordIndex = -1;
+  Timer? _syncTimer;
 
   final String textContent = '''
 Si Pepito ay may pusa.
@@ -24,23 +27,24 @@ Pinakakain niya ito ng tinapay.
 
   List<String> words = [];
 
-  // New word timings (in milliseconds)
   final List<int> wordTimings = [
-    0, 888, 1776, 2664, 3552, 4440, // Si Pepito ay may pusa. (4.44 sec)
-    5288, 6136, 6984, 7832, 8680, // Apat ang mga pusa niya. (4.24 sec)
-    9556, 10714, 11872, 13030, 14188, 15346, // Paborito ni Pepito ang pusa na puti. (6.95 sec)
-    16204, 17032, 17860, 18688, 19516, 20344, // Pinakakain niya ito ng tinapay. (4.97 sec)
+    0, 888, 1776, 2664, 3552, 4440,
+    5288, 6136, 6984, 7832, 8680,
+    9556, 10714, 11872, 13030, 14188, 15346,
+    16204, 17032, 17860, 18688, 19516, 20344,
   ];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    words = textContent.split(RegExp(r'\s+')); // Split text into words
+    words = textContent.split(RegExp(r'\s+'));
+    _audioPlayer.onPlayerComplete.listen(_handleAudioComplete);
   }
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     _audioPlayer.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -51,64 +55,105 @@ Pinakakain niya ito ng tinapay.
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       _audioPlayer.stop();
       setState(() {
-        isPlaying = false;
+        _isPlaying = false;
+        _isPaused = false;
+        _currentWordIndex = -1;
       });
     }
   }
 
-  Future<void> markLessonAsDone(BuildContext context) async {
+  void _handleAudioComplete(void _) {
+    _syncTimer?.cancel();
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        setState(() {
+          _isPlaying = false;
+          _isPaused = false;
+          _currentWordIndex = -1; // ✅ clear red highlight
+        });
+      }
+    });
+  }
+
+  Future<void> _stopPlayback() async {
+    _syncTimer?.cancel();
     await _audioPlayer.stop();
     setState(() {
-      isPlaying = false;
-      currentWordIndex = -1; // Reset highlight
+      _isPlaying = false;
+      _isPaused = false;
+      _currentWordIndex = -1;
+    });
+  }
+
+  Future<void> _pausePlayback() async {
+    await _audioPlayer.pause();
+    _isPaused = true;
+    _syncTimer?.cancel();
+    setState(() {});
+  }
+
+  Future<void> _resumeOrPlay() async {
+    if (_isPaused) {
+      await _audioPlayer.resume();
+      _isPaused = false;
+      _isPlaying = true;
+      _startTextSync();
+      setState(() {});
+    } else {
+      await _playText();
+    }
+  }
+
+  Future<void> _playText() async {
+    await _stopPlayback();
+    const audioPath = 'audio/Pagbasa19.mp3';
+    await _audioPlayer.play(AssetSource(audioPath));
+    _isPlaying = true;
+    _isPaused = false;
+    _startTextSync();
+    setState(() {});
+  }
+
+  void _startTextSync() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(milliseconds: 100), (_) async {
+      final pos = await _audioPlayer.getCurrentPosition();
+      final ms = pos?.inMilliseconds ?? 0;
+
+      int wordIndex = -1;
+      for (int i = 0; i < wordTimings.length; i++) {
+        if (ms >= wordTimings[i]) {
+          wordIndex = i;
+        } else {
+          break;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentWordIndex = wordIndex;
+        });
+      }
     });
 
+    // ✅ Fallback to clear red highlight even if onComplete fails
+    Future.delayed(Duration(milliseconds: wordTimings.last + 500), () {
+      if (mounted && _isPlaying) {
+        setState(() {
+          _currentWordIndex = -1;
+        });
+      }
+    });
+  }
+
+  Future<void> markLessonAsDone(BuildContext context) async {
+    await _stopPlayback();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(title, true);
-
-    // Navigate to AralinPage
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => AralinPage()),
     );
-  }
-
-  void _playText() async {
-    const audioPath = 'audio/Pagbasa19.mp3'; // Updated audio file path
-
-    try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(AssetSource(audioPath));
-      setState(() {
-        isPlaying = true;
-        currentWordIndex = 0; // Start highlighting from the first word
-      });
-      _syncTextWithAudio();
-
-      // Reset state when audio finishes
-      _audioPlayer.onPlayerComplete.listen((event) {
-        if (mounted) {
-          setState(() {
-            isPlaying = false;
-            currentWordIndex = -1; // Hide highlight
-          });
-        }
-      });
-    } catch (e) {
-      print('Error playing sound: $e');
-    }
-  }
-
-  void _syncTextWithAudio() {
-    for (int i = 0; i < wordTimings.length; i++) {
-      Future.delayed(Duration(milliseconds: wordTimings[i]), () {
-        if (mounted) {
-          setState(() {
-            currentWordIndex = i;
-          });
-        }
-      });
-    }
   }
 
   @override
@@ -124,7 +169,7 @@ Pinakakain niya ito ng tinapay.
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            _audioPlayer.stop();
+            _stopPlayback();
             Navigator.pop(context);
           },
         ),
@@ -170,7 +215,7 @@ Pinakakain niya ito ng tinapay.
                         style: GoogleFonts.lexendDeca(
                           fontSize: fontSize,
                           fontWeight: FontWeight.bold,
-                          color: index == currentWordIndex ? Colors.red : Colors.black,
+                          color: index == _currentWordIndex ? Colors.red : Colors.black,
                         ),
                       );
                     }).toList(),
@@ -180,8 +225,20 @@ Pinakakain niya ito ng tinapay.
               ),
               const SizedBox(height: 30),
               IconButton(
-                icon: const Icon(Icons.play_circle_outline, color: Colors.green, size: 60),
-                onPressed: _playText,
+                icon: Icon(
+                  _isPlaying
+                      ? (_isPaused ? Icons.play_circle_outline : Icons.pause_circle_outline)
+                      : Icons.play_circle_outline,
+                  color: Colors.green,
+                  size: 60,
+                ),
+                onPressed: () {
+                  if (_isPlaying && !_isPaused) {
+                    _pausePlayback();
+                  } else {
+                    _resumeOrPlay();
+                  }
+                },
               ),
             ],
           ),

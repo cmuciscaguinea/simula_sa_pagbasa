@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,8 +13,11 @@ class Lesson2_2Page extends StatefulWidget {
 class _Lesson2_2PageState extends State<Lesson2_2Page> with WidgetsBindingObserver {
   final String title = 'Aralin 2.2';
   final AudioPlayer _audioPlayer = AudioPlayer();
-  bool isPlaying = false;
-  int currentWordIndex = -1; // Initialize to -1 to hide highlight initially
+  bool _isPlaying = false;
+  bool _isPaused = false;
+  int _currentWordIndex = -1;
+  Duration _currentPosition = Duration.zero;
+  Timer? _syncTimer;
 
   final String textContent = '''
 Ang ama, aasa.
@@ -23,19 +27,10 @@ Sasama sa masa ang mama.
 ''';
 
   List<String> words = [];
-
-  // Updated custom timestamps for each word in milliseconds
   final List<int> wordTimings = [
-    // "Ang ama, aasa." (3.34 seconds, 3 words, ~1113 ms per word)
     0, 1113, 2226,
-
-    // "Sasama sa masa." (2.92 seconds, 3 words, ~973 ms per word)
     3340, 4313, 5286,
-
-    // "Sasama sa masa ang ama." (4.46 seconds, 5 words, ~892 ms per word)
     6260, 7152, 8044, 8936, 9828,
-
-    // "Sasama sa masa ang mama." (4.73 seconds, 5 words, ~946 ms per word)
     10720, 11666, 12612, 13558, 14504,
   ];
 
@@ -44,64 +39,101 @@ Sasama sa masa ang mama.
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     words = textContent.split(RegExp(r'\s+'));
+    _audioPlayer.onPlayerComplete.listen(_handleAudioComplete);
   }
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     _audioPlayer.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  Future<void> markLessonAsDone(BuildContext context) async {
+  void _handleAudioComplete(void _) {
+    if (mounted) {
+      setState(() {
+        _isPlaying = false;
+        _isPaused = false;
+        _currentWordIndex = -1;
+      });
+    }
+    _syncTimer?.cancel();
+  }
+
+  Future<void> _stopPlayback() async {
+    _syncTimer?.cancel();
     await _audioPlayer.stop();
     setState(() {
-      isPlaying = false;
-      currentWordIndex = -1;
+      _isPlaying = false;
+      _isPaused = false;
+      _currentWordIndex = -1;
     });
+  }
 
+  Future<void> _pausePlayback() async {
+    final pos = await _audioPlayer.getCurrentPosition();
+    _currentPosition = pos ?? Duration.zero;
+    await _audioPlayer.pause();
+    _isPaused = true;
+    _syncTimer?.cancel();
+    setState(() {});
+  }
+
+  Future<void> _resumeOrPlay() async {
+    if (_isPaused) {
+      await _audioPlayer.resume();
+      _isPaused = false;
+      _isPlaying = true;
+      _startTextSync();
+      setState(() {});
+    } else {
+      await _playText();
+    }
+  }
+
+  Future<void> _playText() async {
+    await _stopPlayback();
+    const audioPath = 'audio/Amaa.mp3';
+    await _audioPlayer.play(AssetSource(audioPath));
+    _isPlaying = true;
+    _isPaused = false;
+    _currentPosition = Duration.zero;
+    _startTextSync();
+    setState(() {});
+  }
+
+  void _startTextSync() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(Duration(milliseconds: 100), (_) async {
+      final pos = await _audioPlayer.getCurrentPosition();
+      final ms = pos?.inMilliseconds ?? 0;
+
+      int wordIndex = -1;
+      for (int i = 0; i < wordTimings.length; i++) {
+        if (ms >= wordTimings[i]) {
+          wordIndex = i;
+        } else {
+          break;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentWordIndex = wordIndex;
+        });
+      }
+    });
+  }
+
+  Future<void> markLessonAsDone(BuildContext context) async {
+    await _stopPlayback();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(title, true);
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => AralinPage()),
     );
-  }
-
-  void _playText() async {
-    const audioPath = 'audio/Amaa.mp3';
-
-    try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(AssetSource(audioPath));
-      setState(() {
-        isPlaying = true;
-        currentWordIndex = 0;
-      });
-      _syncTextWithAudio();
-
-      _audioPlayer.onPlayerComplete.listen((event) {
-        setState(() {
-          currentWordIndex = -1;
-          isPlaying = false;
-        });
-      });
-    } catch (e) {
-      print('Error playing sound: $e');
-    }
-  }
-
-  void _syncTextWithAudio() {
-    for (int i = 0; i < wordTimings.length; i++) {
-      Future.delayed(Duration(milliseconds: wordTimings[i]), () {
-        if (mounted) {
-          setState(() {
-            currentWordIndex = i;
-          });
-        }
-      });
-    }
   }
 
   @override
@@ -117,7 +149,7 @@ Sasama sa masa ang mama.
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            _audioPlayer.stop();
+            _stopPlayback();
             Navigator.pop(context);
           },
         ),
@@ -163,7 +195,7 @@ Sasama sa masa ang mama.
                         style: GoogleFonts.lexendDeca(
                           fontSize: fontSize,
                           fontWeight: FontWeight.bold,
-                          color: index == currentWordIndex ? Colors.red : Colors.black,
+                          color: index == _currentWordIndex ? Colors.red : Colors.black,
                         ),
                       );
                     }).toList(),
@@ -173,8 +205,20 @@ Sasama sa masa ang mama.
               ),
               const SizedBox(height: 30),
               IconButton(
-                icon: const Icon(Icons.play_circle_outline, color: Colors.green, size: 60),
-                onPressed: _playText,
+                icon: Icon(
+                  _isPlaying
+                      ? (_isPaused ? Icons.play_circle_outline : Icons.pause_circle_outline)
+                      : Icons.play_circle_outline,
+                  color: Colors.green,
+                  size: 60,
+                ),
+                onPressed: () {
+                  if (_isPlaying && !_isPaused) {
+                    _pausePlayback();
+                  } else {
+                    _resumeOrPlay();
+                  }
+                },
               ),
             ],
           ),

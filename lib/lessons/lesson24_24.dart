@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,25 +13,27 @@ class Lesson24_24 extends StatefulWidget {
 class _Lesson24_24State extends State<Lesson24_24> with WidgetsBindingObserver {
   final String title = 'Aralin 24.24';
   final AudioPlayer _audioPlayer = AudioPlayer();
-  bool isPlaying = false;
-  int currentWordIndex = -1;
+  bool _isPlaying = false;
+  bool _isPaused = false;
+  int _currentWordIndex = -1;
+  Timer? _syncTimer;
 
   final String textContent = '''
 Si Bibong ay nasa bangka.
 Siya ay may saging.
 Kinain ni Bibong ang isang saging.
 Binigyan niya si Aling Maring.
-Tuwang-tuwa siya sa binigay na saging.
+Tuwang-tuwa siya sa binigay.
 ''';
 
   List<String> words = [];
 
   final List<int> wordTimings = [
-    0, 930, 1860, 2790, 3720, // Si Bibong ay nasa bangka. (3.72 sec)
-    4660, 5600, 6540, 7400, // Siya ay may saging. (3.89 sec)
-    8280, 9160, 10040, 10920, 11800, 12680, 13560, // Kinain ni Bibong ang isang saging. (5.63 sec)
-    14600, 15640, 16680, 17720, 18760, 19800, // Binigyan niya si Aling Maring. (4.55 sec)
-    20900, 22000, 23100, 24200, 25300, 26400, 27500 // Tuwang-tuwa siya sa binigay na saging. (5.30 sec)
+    0, 930, 1860, 2790, 3720,
+    4660, 5600, 6540, 7400,
+    8280, 9160, 10040, 10920, 11800, 12680, 13560,
+    14600, 15640, 16680, 17720, 18760, 19800,
+    20900, 22000, 23100, 24200, 25300,
   ];
 
   @override
@@ -38,10 +41,12 @@ Tuwang-tuwa siya sa binigay na saging.
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     words = textContent.split(RegExp(r'\s+'));
+    _audioPlayer.onPlayerComplete.listen(_handleAudioComplete);
   }
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     _audioPlayer.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -52,62 +57,95 @@ Tuwang-tuwa siya sa binigay na saging.
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       _audioPlayer.stop();
       setState(() {
-        isPlaying = false;
+        _isPlaying = false;
+        _isPaused = false;
+        _currentWordIndex = -1;
       });
     }
   }
 
-  Future<void> markLessonAsDone(BuildContext context) async {
+  void _handleAudioComplete(void _) {
+    _syncTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _isPlaying = false;
+        _isPaused = false;
+        _currentWordIndex = -1;
+      });
+    }
+  }
+
+  Future<void> _stopPlayback() async {
+    _syncTimer?.cancel();
     await _audioPlayer.stop();
     setState(() {
-      isPlaying = false;
-      currentWordIndex = -1;
+      _isPlaying = false;
+      _isPaused = false;
+      _currentWordIndex = -1;
     });
+  }
 
+  Future<void> _pausePlayback() async {
+    await _audioPlayer.pause();
+    _isPaused = true;
+    _syncTimer?.cancel();
+    setState(() {});
+  }
+
+  Future<void> _resumeOrPlay() async {
+    if (_isPaused) {
+      await _audioPlayer.resume();
+      _isPaused = false;
+      _isPlaying = true;
+      _startTextSync();
+      setState(() {});
+    } else {
+      await _playText();
+    }
+  }
+
+  Future<void> _playText() async {
+    await _stopPlayback();
+    const audioPath = 'audio/Pagbasa24.mp3';
+    await _audioPlayer.play(AssetSource(audioPath));
+    _isPlaying = true;
+    _isPaused = false;
+    _startTextSync();
+    setState(() {});
+  }
+
+  void _startTextSync() {
+    _syncTimer?.cancel();
+
+    _syncTimer = Timer.periodic(const Duration(milliseconds: 100), (_) async {
+      final pos = await _audioPlayer.getCurrentPosition();
+      final ms = pos?.inMilliseconds ?? 0;
+
+      int wordIndex = -1;
+      for (int i = 0; i < wordTimings.length; i++) {
+        if (ms >= wordTimings[i]) {
+          wordIndex = i;
+        } else {
+          break;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentWordIndex = wordIndex;
+        });
+      }
+    });
+  }
+
+  Future<void> markLessonAsDone(BuildContext context) async {
+    await _stopPlayback();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(title, true);
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => AralinPage()),
     );
-  }
-
-  void _playText() async {
-    const audioPath = 'audio/Pagbasa24.mp3';
-
-    try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(AssetSource(audioPath));
-      setState(() {
-        isPlaying = true;
-        currentWordIndex = 0;
-      });
-      _syncTextWithAudio();
-
-      _audioPlayer.onPlayerComplete.listen((event) {
-        if (mounted) {
-          setState(() {
-            isPlaying = false;
-            currentWordIndex = -1;
-          });
-        }
-      });
-    } catch (e) {
-      print('Error playing sound: $e');
-    }
-  }
-
-  void _syncTextWithAudio() {
-    for (int i = 0; i < wordTimings.length; i++) {
-      Future.delayed(Duration(milliseconds: wordTimings[i]), () {
-        if (mounted && isPlaying) {
-          setState(() {
-            currentWordIndex = i;
-          });
-        }
-      });
-    }
   }
 
   @override
@@ -123,7 +161,7 @@ Tuwang-tuwa siya sa binigay na saging.
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            _audioPlayer.stop();
+            _stopPlayback();
             Navigator.pop(context);
           },
         ),
@@ -169,7 +207,7 @@ Tuwang-tuwa siya sa binigay na saging.
                         style: GoogleFonts.lexendDeca(
                           fontSize: fontSize,
                           fontWeight: FontWeight.bold,
-                          color: index == currentWordIndex ? Colors.red : Colors.black,
+                          color: index == _currentWordIndex ? Colors.red : Colors.black,
                         ),
                       );
                     }).toList(),
@@ -179,8 +217,20 @@ Tuwang-tuwa siya sa binigay na saging.
               ),
               const SizedBox(height: 30),
               IconButton(
-                icon: const Icon(Icons.play_circle_outline, color: Colors.green, size: 60),
-                onPressed: _playText,
+                icon: Icon(
+                  _isPlaying
+                      ? (_isPaused ? Icons.play_circle_outline : Icons.pause_circle_outline)
+                      : Icons.play_circle_outline,
+                  color: Colors.green,
+                  size: 60,
+                ),
+                onPressed: () {
+                  if (_isPlaying && !_isPaused) {
+                    _pausePlayback();
+                  } else {
+                    _resumeOrPlay();
+                  }
+                },
               ),
             ],
           ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,8 +13,11 @@ class Lesson7_7 extends StatefulWidget {
 class _Lesson7_7State extends State<Lesson7_7> with WidgetsBindingObserver {
   final String title = 'Aralin 7.7';
   final AudioPlayer _audioPlayer = AudioPlayer();
-  bool isPlaying = false;
-  int currentWordIndex = -1; // Start with no highlight
+  bool _isPlaying = false;
+  bool _isPaused = false;
+  int _currentWordIndex = -1;
+  Duration _currentPosition = Duration.zero;
+  Timer? _syncTimer;
 
   final String textContent = '''
 Si Ami ay may aso.
@@ -25,21 +29,11 @@ Maamo ang aso sa oso.
 
   List<String> words = [];
 
-  // Updated custom timestamps for each word in milliseconds
   final List<int> wordTimings = [
-    // "Si Ami ay may aso." (3.05 seconds, 5 words, ~610 ms per word)
     0, 610, 1220, 1830, 2440,
-
-    // "Si Mimi ay may oso." (3.11 seconds, 5 words, ~622 ms per word)
     3050, 3672, 4294, 4916, 5538,
-
-    // "Ang aso ay maamo." (3.11 seconds, 4 words, ~778 ms per word)
     6160, 6938, 7716, 8494,
-
-    // "Ang oso ay maamo." (2.98 seconds, 4 words, ~745 ms per word)
     9272, 10017, 10762, 11507,
-
-    // "Maamo ang aso sa oso." (3.32 seconds, 5 words, ~664 ms per word)
     12252, 12916, 13580, 14244, 14908,
   ];
 
@@ -47,11 +41,13 @@ Maamo ang aso sa oso.
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    words = textContent.split(RegExp(r'\s+')); // Split text into words
+    words = textContent.split(RegExp(r'\s+'));
+    _audioPlayer.onPlayerComplete.listen(_handleAudioComplete);
   }
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
     _audioPlayer.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -62,62 +58,97 @@ Maamo ang aso sa oso.
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       _audioPlayer.stop();
       setState(() {
-        isPlaying = false;
-        currentWordIndex = -1; // Reset highlight
+        _isPlaying = false;
+        _isPaused = false;
+        _currentWordIndex = -1;
       });
     }
   }
 
-  Future<void> markLessonAsDone(BuildContext context) async {
+  void _handleAudioComplete(void _) {
+    _syncTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _isPlaying = false;
+        _isPaused = false;
+        _currentWordIndex = -1;
+      });
+    }
+  }
+
+  Future<void> _stopPlayback() async {
+    _syncTimer?.cancel();
     await _audioPlayer.stop();
     setState(() {
-      isPlaying = false;
-      currentWordIndex = -1; // Reset highlight
+      _isPlaying = false;
+      _isPaused = false;
+      _currentWordIndex = -1;
     });
+  }
 
+  Future<void> _pausePlayback() async {
+    final pos = await _audioPlayer.getCurrentPosition();
+    _currentPosition = pos ?? Duration.zero;
+    await _audioPlayer.pause();
+    _isPaused = true;
+    _syncTimer?.cancel();
+    setState(() {});
+  }
+
+  Future<void> _resumeOrPlay() async {
+    if (_isPaused) {
+      await _audioPlayer.resume();
+      _isPaused = false;
+      _isPlaying = true;
+      _startTextSync();
+      setState(() {});
+    } else {
+      await _playText();
+    }
+  }
+
+  Future<void> _playText() async {
+    await _stopPlayback();
+    const audioPath = 'audio/Pagbasa7.mp3';
+    await _audioPlayer.play(AssetSource(audioPath));
+    _isPlaying = true;
+    _isPaused = false;
+    _currentPosition = Duration.zero;
+    _startTextSync();
+    setState(() {});
+  }
+
+  void _startTextSync() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(milliseconds: 100), (_) async {
+      final pos = await _audioPlayer.getCurrentPosition();
+      final ms = pos?.inMilliseconds ?? 0;
+
+      int wordIndex = -1;
+      for (int i = 0; i < wordTimings.length; i++) {
+        if (ms >= wordTimings[i]) {
+          wordIndex = i;
+        } else {
+          break;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _currentWordIndex = wordIndex;
+        });
+      }
+    });
+  }
+
+  Future<void> markLessonAsDone(BuildContext context) async {
+    await _stopPlayback();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(title, true);
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => AralinPage()),
     );
-  }
-
-  void _playText() async {
-    const audioPath = 'audio/Pagbasa7.mp3'; // Audio file path
-
-    try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(AssetSource(audioPath));
-      setState(() {
-        isPlaying = true;
-        currentWordIndex = 0; // Start with the first word
-      });
-      _syncTextWithAudio();
-
-      // Reset highlight when audio finishes
-      _audioPlayer.onPlayerComplete.listen((event) {
-        setState(() {
-          currentWordIndex = -1; // Remove highlight when audio ends
-          isPlaying = false;
-        });
-      });
-    } catch (e) {
-      print('Error playing sound: $e');
-    }
-  }
-
-  void _syncTextWithAudio() {
-    for (int i = 0; i < wordTimings.length; i++) {
-      Future.delayed(Duration(milliseconds: wordTimings[i]), () {
-        if (mounted) {
-          setState(() {
-            currentWordIndex = i;
-          });
-        }
-      });
-    }
   }
 
   @override
@@ -133,7 +164,7 @@ Maamo ang aso sa oso.
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            _audioPlayer.stop();
+            _stopPlayback();
             Navigator.pop(context);
           },
         ),
@@ -179,7 +210,7 @@ Maamo ang aso sa oso.
                         style: GoogleFonts.lexendDeca(
                           fontSize: fontSize,
                           fontWeight: FontWeight.bold,
-                          color: index == currentWordIndex ? Colors.red : Colors.black,
+                          color: index == _currentWordIndex ? Colors.red : Colors.black,
                         ),
                       );
                     }).toList(),
@@ -189,8 +220,20 @@ Maamo ang aso sa oso.
               ),
               const SizedBox(height: 30),
               IconButton(
-                icon: const Icon(Icons.play_circle_outline, color: Colors.green, size: 60),
-                onPressed: _playText,
+                icon: Icon(
+                  _isPlaying
+                      ? (_isPaused ? Icons.play_circle_outline : Icons.pause_circle_outline)
+                      : Icons.play_circle_outline,
+                  color: Colors.green,
+                  size: 60,
+                ),
+                onPressed: () {
+                  if (_isPlaying && !_isPaused) {
+                    _pausePlayback();
+                  } else {
+                    _resumeOrPlay();
+                  }
+                },
               ),
             ],
           ),
